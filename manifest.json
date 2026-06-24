@@ -1,0 +1,41 @@
+{
+    "name":  "Spark Homes Repair Estimator",
+    "short_name":  "Spark Estimate",
+    "description":  "Mobile repair cost estimator for Spark Homes acquisition walkthroughs.",
+    "id":  "./index.html",
+    "start_url":  "./index.html",
+    "scope":  "./",
+    "display":  "standalone",
+    "display_override":  [
+                             "standalone",
+                             "browser"
+                         ],
+    "orientation":  "portrait",
+    "background_color":  "#F6F3EF",
+    "theme_color":  "#111111",
+    "categories":  [
+                       "business",
+                       "productivity",
+                       "utilities"
+                   ],
+    "icons":  [
+                  {
+                      "purpose":  "any",
+                      "type":  "image/png",
+                      "sizes":  "192x192",
+                      "src":  "./icon-192.png"
+                  },
+                  {
+                      "purpose":  "any",
+                      "type":  "image/png",
+                      "sizes":  "512x512",
+                      "src":  "./icon-512.png"
+                  },
+                  {
+                      "purpose":  "maskable",
+                      "type":  "image/png",
+                      "sizes":  "512x512",
+                      "src":  "./icon-maskable-512.png"
+                  }
+              ]
+}

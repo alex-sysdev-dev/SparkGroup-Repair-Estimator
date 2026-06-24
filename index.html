@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Spark Estimate">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <title>Spark Homes Repair Estimator</title>
+  <style>
+    :root {
+      --spark: #111111;
+      --spark-dark: #000000;
+      --ink: #111111;
+      --muted: #666666;
+      --line: #d9d9d9;
+      --paper: #f7f7f7;
+      --bg: #f2f2f2;
+      --good: #111111;
+      --warn: #444444;
+      --bad: #333333;
+      --shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { min-height: 100%; margin: 0; background: var(--bg); color: var(--ink); font-family: Aptos, "SF Pro Text", "Segoe UI", Roboto, Arial, sans-serif; }
+    body { overscroll-behavior: none; }
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    input, textarea, select { min-width: 0; }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { appearance: none; margin: 0; }
+    .app { min-height: 100vh; padding-bottom: max(88px, env(safe-area-inset-bottom)); }
+    .topbar { position: sticky; top: 0; z-index: 20; background: #050505; color: white; box-shadow: var(--shadow); padding-top: env(safe-area-inset-top); }
+    .toprow { display: grid; grid-template-columns: 44px minmax(0, 1fr) 88px; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+    .brand { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; overflow: hidden; }
+    .brand img { width: min(104px, 30vw); height: auto; display: block; filter: brightness(0) invert(1); flex: 0 1 auto; }
+    .brand small { display: block; color: #d0d0d0; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .iconbtn { width: 40px; height: 40px; border-radius: 8px; background: rgba(255,255,255,0.10); color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }
+    .iconbtn.spark { background: var(--spark); }
+    .totals { padding: 0 14px 14px; }
+    .kicker { margin: 0 0 3px; color: #d7d7d7; font-size: 11px; font-weight: 800; letter-spacing: 0.10em; text-transform: uppercase; }
+    .totalrow { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+    .total { margin: 0; font-size: clamp(36px, 12vw, 58px); line-height: 0.95; font-weight: 900; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+    .project-name { margin: 5px 0 0; color: #d0d0d0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .progress-wrap { display: flex; align-items: center; gap: 9px; margin-top: 11px; }
+    .progress { height: 8px; flex: 1; border-radius: 4px; overflow: hidden; background: #333333; }
+    .progress > span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--spark); transition: width .25s ease; }
+    .progress-label { color: #c7c7c7; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .views { position: sticky; top: calc(0px + env(safe-area-inset-top)); z-index: 19; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 10px; background: var(--bg); border-bottom: 1px solid var(--line); }
+    .views button { border-radius: 8px; padding: 10px 8px; background: white; color: var(--muted); font-size: 13px; font-weight: 800; border: 1px solid var(--line); }
+    .views button.active { background: var(--ink); color: white; border-color: var(--ink); }
+    .main { max-width: 760px; margin: 0 auto; padding: 12px 12px 24px; }
+    .room-rail { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; scrollbar-width: none; }
+    .room-rail::-webkit-scrollbar { display: none; }
+    .pill { flex: 0 0 auto; border: 1px solid var(--line); background: white; border-radius: 8px; padding: 9px 12px; color: var(--muted); font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .pill.active { background: var(--spark); border-color: var(--spark); color: white; }
+    .panel { background: white; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,.04); overflow: hidden; margin-bottom: 10px; }
+    .room-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 15px 14px; background: var(--paper); border-bottom: 1px solid var(--line); }
+    .room-head h1, .room-head h2 { margin: 0; font-size: 18px; line-height: 1.15; }
+    .room-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .small-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+    .mini { border-radius: 7px; padding: 8px 10px; background: #eeeeee; color: var(--ink); font-size: 12px; font-weight: 800; }
+    .mini.danger { color: #111111; background: #f7f7f7; }
+    .group { margin: 0 0 10px; border: 1px solid var(--line); border-radius: 8px; background: white; overflow: hidden; }
+    .group.done { border-color: #bdbdbd; box-shadow: inset 3px 0 0 #d0d0d0; }
+    .group-top { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px; background: white; color: var(--ink); text-align: left; }
+    .group-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .chev { width: 24px; height: 24px; border-radius: 6px; background: #eeeeee; color: var(--ink); display: grid; place-items: center; flex: 0 0 auto; font-weight: 800; }
+    .group-title strong { display: block; font-size: 14px; line-height: 1.15; }
+    .group-title span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .group-total { font-weight: 900; font-size: 15px; color: var(--spark-dark); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .group-body { border-top: 1px solid var(--line); padding: 10px; background: #f7f7f7; }
+    .group-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 9px; }
+    .toolbtn { border-radius: 8px; padding: 10px; background: white; color: var(--ink); border: 1px solid var(--line); font-size: 12px; font-weight: 800; }
+    .toolbtn.active { color: var(--ink); border-color: #111111; background: #eeeeee; }
+    .item { background: white; border: 1px solid #dddddd; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+    .item.selected { border-color: #111111; box-shadow: inset 3px 0 0 #111111; }
+    .item-main { display: flex; gap: 11px; padding: 12px; align-items: flex-start; }
+    .check { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 7px; border: 2px solid #bfbfbf; background: white; color: white; display: grid; place-items: center; margin-top: 1px; }
+    .check.on { border-color: var(--spark); background: var(--spark); }
+    .item-copy { flex: 1; min-width: 0; }
+    .item-line { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .item-name { margin: 0; color: var(--ink); font-size: 14px; font-weight: 800; line-height: 1.25; }
+    .item-meta { margin: 4px 0 0; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .line-total { color: var(--spark-dark); font-size: 15px; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .item-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; padding: 0 12px 12px 53px; }
+    .item-fields.wide { grid-template-columns: 1fr; }
+    label.field { display: block; }
+    .field span { display: block; color: var(--muted); font-size: 11px; font-weight: 800; margin: 0 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+    .field input, .field textarea, .field select { width: 100%; border: 1px solid #cfcfcf; border-radius: 7px; padding: 10px 11px; background: #ffffff; color: var(--ink); outline: none; font-size: 15px; }
+    .field textarea { min-height: 76px; resize: vertical; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: #111111; box-shadow: 0 0 0 3px rgba(0,0,0,.08); }
+    .photo-strip { display: flex; gap: 8px; overflow-x: auto; padding: 0 12px 12px 53px; }
+    .photo { position: relative; flex: 0 0 auto; width: 76px; height: 76px; border-radius: 8px; border: 1px solid var(--line); object-fit: cover; background: #eee; }
+    .photo-wrap { position: relative; flex: 0 0 auto; }
+    .photo-x { position: absolute; top: -7px; right: -7px; width: 25px; height: 25px; border-radius: 50%; background: var(--bad); color: white; font-weight: 800; }
+    .add-photo { flex: 0 0 auto; width: 76px; height: 76px; border-radius: 8px; border: 1px dashed #111111; color: #111111; background: #ffffff; font-size: 11px; font-weight: 800; }
+    .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+    .bottom-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 18; padding: 10px 12px max(12px, env(safe-area-inset-bottom)); background: rgba(242,242,242,.96); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
+    .bottom-grid { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .primary, .secondary, .dangerbtn { border-radius: 8px; padding: 14px 12px; font-weight: 900; font-size: 14px; }
+    .primary { background: var(--spark); color: white; }
+    .secondary { background: white; color: var(--ink); border: 1px solid var(--line); }
+    .dangerbtn { background: #f7f7f7; color: #111111; border: 1px solid #cfcfcf; }
+    .sheet { position: fixed; inset: 0; z-index: 60; display: none; }
+    .sheet.show { display: block; }
+    .shade { position: absolute; inset: 0; background: rgba(17,17,17,.55); }
+    .sheet-card { position: absolute; left: 0; right: 0; bottom: 0; max-height: min(82vh, 720px); overflow: auto; background: white; border-radius: 10px 10px 0 0; padding: 18px 15px max(18px, env(safe-area-inset-bottom)); box-shadow: var(--shadow); }
+    .sheet-card h2 { margin: 0 0 12px; font-size: 18px; }
+    .form-grid { display: grid; gap: 10px; }
+    .project-row { width: 100%; text-align: left; display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 13px; border-radius: 8px; background: #f7f7f7; border: 1px solid var(--line); margin-bottom: 8px; color: var(--ink); }
+    .project-row strong { display: block; font-size: 14px; }
+    .project-row span { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .stat { background: white; border: 1px solid var(--line); border-radius: 8px; padding: 13px; }
+    .stat span { color: var(--muted); display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
+    .stat strong { display: block; margin-top: 6px; font-size: 21px; line-height: 1; font-variant-numeric: tabular-nums; }
+    .deal-status { border-radius: 8px; padding: 15px; color: white; background: var(--ink); margin-bottom: 12px; }
+    .deal-status.good { background: var(--good); }
+    .deal-status.warn { background: var(--warn); }
+    .deal-status.bad { background: var(--bad); }
+    .deal-status h2 { margin: 0 0 4px; font-size: 22px; }
+    .deal-status p { margin: 0; opacity: .9; font-size: 13px; font-weight: 700; }
+    .warning { background: #f7f7f7; border: 1px solid #d0d0d0; color: #111111; border-radius: 8px; padding: 12px; font-size: 13px; font-weight: 750; margin-bottom: 8px; }
+    .summary-section { border: 1px solid var(--line); background: white; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    .summary-head { display: flex; justify-content: space-between; gap: 10px; padding: 13px; background: var(--paper); border-bottom: 1px solid var(--line); font-weight: 800; }
+    .summary-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 10px; padding: 12px 13px; border-bottom: 1px solid #e5e5e5; }
+    .summary-row:last-child { border-bottom: 0; }
+    .summary-row p { margin: 0; font-size: 13px; font-weight: 800; }
+    .summary-row span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .money { font-weight: 950; color: var(--spark-dark); font-variant-numeric: tabular-nums; }
+    .hidden { display: none !important; }
+    @media (min-width: 720px) {
+      .toprow, .totals, .views { max-width: 760px; margin-left: auto; margin-right: auto; }
+      .item-fields { grid-template-columns: repeat(4, minmax(0,1fr)); }
+      .item-fields.wide { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 430px) {
+      .brand small { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="sheet" class="sheet" aria-hidden="true">
+    <div class="shade" data-action="close-sheet"></div>
+    <div class="sheet-card" id="sheet-content"></div>
+  </div>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+    }
+
+    const PRICE_CSV = `id,name,cost,unit
+ig-01,Refinish Hardwood Floor,2.35,sqft
+ig-02,New Hardwoods 1.5 in.,10.00,sqft
+ig-03,New Hardwoods 2 in.,4.75,sqft
+ig-04,Hardwood Splicing,8.40,sqft
+ig-05,Vinyl Plank,2.50,sqft
+ig-06,Carpet,1.90,sqft
+ig-07,Interior Paint - 2 Tone,2.95,sqft
+ig-08,Drywall Repair,900.00,1,000 sqft
+ig-09,Wallpaper Removal,250.00,room
+ig-10,Interior Door - Hollow Slab,125.00,ea.
+ig-11,Interior Door Hardware (Knob + Hinges + Labor),25.00,ea.
+ig-12,Bifold Door with Framing,400.00,ea.
+ig-13,Interior Door - Pre-hung,200.00,ea.
+ig-14,Front Entry Door,475.00,ea.
+ig-15,Front Entry Door Hardware,80.00,ea.
+ig-16,Exterior Door Hardware,75.00,handle
+ig-17,Exterior Insulated Side Door (Installed),500.00,ea.
+ig-18,Sliding Glass Door,1025.00,ea.
+ig-19,Trim Out (Casing / Crown / Baseboard),3.75,LF
+ig-20,MISC / Punch List,2650.00,flat
+ig-21,Finish Out Labor,1350.00,flat
+ig-22,Light Fixtures,70.00,100 sqft
+ig-23,Bedbug Spray / Heat Treat,475.00,ea.
+ig-24,Termite Treatment,650.00,ea.
+ig-25,Demo,1375.00,variable
+ig-26,Haul Off,725.00,load
+ig-27,Final Cleaning,325.00,flat
+ig-28,Staging,0.90,sqft
+kt-01,Hinges and Pulls,275.00,kitchen
+kt-02,Cabinets Uppers,125.00,LF
+kt-03,Cabinets Lowers,150.00,LF
+kt-04,Cabinet Door Faces Only,80.00,door
+kt-05,Cabinets (Labor & Paint),1100.00,kitchen
+kt-06,Granite + 4 in. Splash Guard,40.00,LF
+kt-07,Backsplash,725.00,house
+kt-08,Misc Woodwork,500.00,variable
+kt-09,Tile - Large Areas,6.45,sqft
+kt-10,Tile - Small Areas,10.00,sqft
+kt-11,Undermount Kitchen Sink,325.00,ea.
+kt-12,Microwave / Hood,500.00,ea.
+kt-13,Range,725.00,ea.
+kt-14,Wall Oven,1075.00,ea.
+kt-15,Cooktop,550.00,ea.
+kt-16,Dishwasher,575.00,ea.
+kt-17,Fridge,1175.00,ea.
+ba-01,Granite ($/LF),35.00,LF
+ba-02,New Bottom Vanity,125.00,LF
+ba-03,Home Depot Vanity w/ Sink (18 in.),225.00,ea.
+ba-04,Toilet,150.00,ea.
+ba-05,Tile - Large Areas,5.80,sqft
+ba-06,Tile - Small Areas,10.00,sqft
+ba-07,Reglaze Tub or Chemical Clean,350.00,ea.
+ba-08,Reglaze Tub + Surround,750.00,ea.
+ba-09,Reglaze Shower,1325.00,ea.
+ba-10,Tiled Shower Tear Out + Tile Install,3100.00,ea.
+ba-11,Tub Tile Surround Tear Out + Tile Install (incl. tub),2250.00,ea.
+ba-12,Shower Plastic Insert Tear Out + New Insert,825.00,ea.
+ba-13,Tub Tear Out + New Insert & Tub,1575.00,ea.
+ba-14,Undermount Sink,150.00,ea.
+ba-15,Mirror,200.00,ea.
+ba-16,HVL (needed if no window),275.00,ea.
+as-01,Furnace,3350.00,ea.
+as-02,Condensing Unit,3300.00,ea.
+as-03,Package Unit,4700.00,ea.
+as-04,A-Coil (if no condensing unit),1625.00,ea.
+as-05,Ducting (if NO HVAC),3200.00,ea.
+as-06,Duct Cleaning - Floor Vents,550.00,ea.
+as-07,Window Unit Replacement 220,575.00,ea.
+as-08,Hot Water Heater w/ Expansion Tank,1425.00,ea.
+as-09,Hot Water Heater Expansion Tank Only,200.00,ea.
+as-10,Switches / Outlets,1400.00,house
+as-11,Standard Electrical,1650.00,house
+as-12,Subfloor,8.20,sqft
+as-13,Framing,950.00,variable
+as-14,Structural (Pier),375.00,pier
+as-15,Structural Foam Injection,5.85,sqft of affected area
+as-16,Roof,1100.00,225 sqft L&M
+as-17,Plumbing,1000.00,variable
+as-18,Electrical Panel Swap to 200A,2350.00,ea.
+as-19,Full Electrical Rewire (to Studs),5.65,sqft
+as-20,Full Electrical Rewire (leaving Drywall),9.15,sqft
+as-21,Wall Insulation (to Studs),1.20,sqft
+as-22,Attic Insulation,1225.00,1,600 sqft house
+as-23,New Drywall to Studs (L&M),5.20,sqft
+as-24,Aluminum Wiring,2450.00,variable
+ex-01,Fence Repair - Chain Link / Wood Gate,225.00,variable
+ex-02,Fence Repair - Chain Link,275.00,LF
+ex-03,Fence Repair - Privacy 6ft,30.00,LF
+ex-04,Landscaping,450.00,variable
+ex-05,Vinyl Siding (10'x10'),300.00,square
+ex-06,Tuck Pointing,225.00,variable
+ex-07,Exterior Paint,2.60,sqft
+ex-08,Exterior Wood Repair,525.00,variable
+ex-09,Siding Repair (10'x10'),975.00,section
+ex-10,Tree Trimming,450.00,variable
+ex-11,Tree Removal (w/o stump),1450.00,tree
+ex-12,Stump Grinding,250.00,stump
+ex-13,Aluminum Window Paint (Int/Ext),700.00,house
+ex-14,Windows (3x5 sash),425.00,ea.
+ex-15,Window Repair - Non-Insulated (6x6+),35.00,sf
+ex-16,Window Repair - Insulated (6x6+),40.00,sf
+ex-17,Aluminum Framed Window Pane,100.00,pane
+ex-18,Guttering,4.15,LF
+ex-19,Concrete w/ Demo,200.00,sqft
+ex-20,Mowing (summer every 2 weeks),45.00,mowing
+ex-21,Garage Door - 1 Car,975.00,ea.
+ex-22,Garage Door - 2 Car (Installed),1225.00,ea.
+ex-23,Garage Conversion,8850.00,ea.`;
+
+    const STORAGE_KEY = "sparkHomesProjects_v2";
+    const PRICE_KEY = "sparkHomesGlobalPrices_v2";
+    const UI = { view: "walk", roomId: null, openGroups: new Set() };
+    const app = document.getElementById("app");
+    const sheet = document.getElementById("sheet");
+    const sheetContent = document.getElementById("sheet-content");
+    const moneyFmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+    function parseCsvLine(line) {
+      const out = [];
+      let cur = "", quoted = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (quoted && line[i + 1] === '"') { cur += '"'; i++; }
+          else quoted = !quoted;
+        } else if (ch === "," && !quoted) {
+          out.push(cur.trim());
+          cur = "";
+        } else cur += ch;
+      }
+      out.push(cur.trim());
+      return out;
+    }
+    function parseCSV(text) {
+      const lines = text.trim().split(/\r?\n/);
+      const headers = parseCsvLine(lines[0]);
+      return lines.slice(1).filter(Boolean).map((line) => {
+        const vals = parseCsvLine(line);
+        return Object.fromEntries(headers.map((h, i) => [h, vals[i] || ""]));
+      });
+    }
+
+    const ITEMS = parseCSV(PRICE_CSV).map((r) => ({ id: r.id, name: r.name, cost: Number(r.cost), unit: r.unit }));
+    const ITEM = Object.fromEntries(ITEMS.map((item) => [item.id, item]));
+    const MEASUREMENT_UNITS = ["sqft", "ea.", "LF", "room", "flat", "load", "kitchen", "house", "door", "handle", "pier", "square", "section", "tree", "stump", "pane", "sf", "mowing", "variable", "1,000 sqft", "100 sqft", "225 sqft L&M", "1,600 sqft house", "sqft of affected area"];
+
+    const ROOM_TYPES = {
+      interior: { label: "Interior / General", defaultName: "Interior / General", section: "Interior", groups: [
+        { id: "flooring", label: "Flooring", ids: ["ig-01","ig-02","ig-03","ig-04","ig-05","ig-06"] },
+        { id: "paint", label: "Paint & Wall Repair", ids: ["ig-07","ig-08","ig-09"] },
+        { id: "doors", label: "Doors", ids: ["ig-10","ig-11","ig-12","ig-13","ig-14","ig-15","ig-16","ig-17","ig-18"] },
+        { id: "pest", label: "Pest Control", ids: ["ig-23","ig-24"] },
+        { id: "finish", label: "Finish Out & Cleanup", ids: ["ig-19","ig-20","ig-21","ig-22","ig-25","ig-26","ig-27","ig-28"] }
+      ]},
+      kitchen: { label: "Kitchen", defaultName: "Kitchen", section: "Kitchen", groups: [
+        { id: "cabinets", label: "Cabinets", ids: ["kt-01","kt-02","kt-03","kt-04","kt-05"] },
+        { id: "counters", label: "Countertops & Tile", ids: ["kt-06","kt-07","kt-08","kt-09","kt-10"] },
+        { id: "appliances", label: "Appliances", ids: ["kt-11","kt-12","kt-13","kt-14","kt-15","kt-16","kt-17"] }
+      ]},
+      bathroom: { label: "Bathroom", defaultName: "Bathroom", section: "Bathroom", groups: [
+        { id: "vanity", label: "Vanity & Countertop", ids: ["ba-01","ba-02","ba-03","ba-04","ba-14","ba-15","ba-16"] },
+        { id: "tub", label: "Tub & Shower", ids: ["ba-07","ba-08","ba-09","ba-10","ba-11","ba-12","ba-13"] },
+        { id: "tile", label: "Tile", ids: ["ba-05","ba-06"] }
+      ]},
+      systems: { label: "Systems & Structure", defaultName: "Systems & Structure", section: "Systems", groups: [
+        { id: "hvac", label: "HVAC", critical: true, ids: ["as-01","as-02","as-03","as-04","as-05","as-06","as-07"] },
+        { id: "electrical", label: "Electrical", critical: true, ids: ["as-10","as-11","as-18","as-19","as-20","as-24"] },
+        { id: "structural", label: "Structural", critical: true, ids: ["as-12","as-13","as-14","as-15","as-16","as-17"] },
+        { id: "insulation", label: "Insulation & Drywall", ids: ["as-21","as-22","as-23"] },
+        { id: "water", label: "Water Heater", critical: true, ids: ["as-08","as-09"] }
+      ]},
+      exterior: { label: "Exterior", defaultName: "Exterior", section: "Exterior", groups: [
+        { id: "fence", label: "Fence", ids: ["ex-01","ex-02","ex-03"] },
+        { id: "siding", label: "Siding", ids: ["ex-05","ex-06","ex-07","ex-08","ex-09","ex-18"] },
+        { id: "windows", label: "Windows", ids: ["ex-13","ex-14","ex-15","ex-16","ex-17"] },
+        { id: "garage", label: "Garage", ids: ["ex-21","ex-22","ex-23"] },
+        { id: "trees", label: "Trees", ids: ["ex-10","ex-11","ex-12"] },
+        { id: "site", label: "Site Work", ids: ["ex-04","ex-19","ex-20"] }
+      ]},
+      bedroom: { label: "Bedroom", defaultName: "Bedroom", section: "Room", groups: [
+        { id: "flooring", label: "Flooring", ids: ["ig-01","ig-02","ig-03","ig-04","ig-05","ig-06"] },
+        { id: "paint", label: "Paint", ids: ["ig-07","ig-08","ig-09"] },
+        { id: "doors", label: "Doors & Closet", ids: ["ig-10","ig-11","ig-12","ig-13","ig-19"] }
+      ]},
+      living: { label: "Living / Common Area", defaultName: "Living / Common Area", section: "Room", groups: [
+        { id: "flooring", label: "Flooring", ids: ["ig-01","ig-02","ig-03","ig-04","ig-05","ig-06"] },
+        { id: "paint", label: "Paint", ids: ["ig-07","ig-08","ig-09"] },
+        { id: "doors", label: "Doors", ids: ["ig-10","ig-11","ig-12","ig-13","ig-19"] },
+        { id: "lighting", label: "Lighting", ids: ["ig-22"] }
+      ]}
+    };
+
+    let state = {
+      projects: [],
+      currentProjectId: null,
+      globalPrices: {},
+      saveTimer: null
+    };
+
+    function uid(prefix) { return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`; }
+    function esc(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function dollars(n) { return moneyFmt.format(Math.round(Number(n) || 0)); }
+    function dateLabel(iso) {
+      try { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+      catch { return ""; }
+    }
+    function readJSON(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+      catch { return fallback; }
+    }
+    function writeJSON(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch { return false; }
+    }
+    function defaultDeal() {
+      return { arv: "", targetProfit: "30000", holdingCost: "10000", riskPct: "10", offer: "" };
+    }
+    function createRoom(type, index) {
+      const cfg = ROOM_TYPES[type];
+      return { id: uid("room"), type, name: type === "bathroom" || type === "bedroom" ? `${cfg.defaultName} ${index || 1}` : cfg.defaultName };
+    }
+    function createProject(name = "New Estimate") {
+      const rooms = [createRoom("interior"), createRoom("kitchen"), createRoom("bathroom", 1), createRoom("systems"), createRoom("exterior")];
+      return {
+        id: uid("project"),
+        name,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        rooms,
+        entries: {},
+        groupReviews: {},
+        customItems: [],
+        deletedItems: {},
+        photos: {},
+        deal: defaultDeal()
+      };
+    }
+    function loadState() {
+      state.projects = readJSON(STORAGE_KEY, []);
+      state.globalPrices = readJSON(PRICE_KEY, {});
+      if (!state.projects.length) state.projects = [createProject()];
+      state.projects.forEach(normalizeProjectDefaults);
+      state.currentProjectId = state.projects[0].id;
+      UI.roomId = state.projects[0].rooms[0]?.id || null;
+    }
+    function saveNow() {
+      const project = currentProject();
+      if (project) project.updatedAt = new Date().toISOString();
+      writeJSON(PRICE_KEY, state.globalPrices);
+      if (!writeJSON(STORAGE_KEY, state.projects)) {
+        const light = state.projects.map((project) => ({ ...project, photos: {} }));
+        writeJSON(STORAGE_KEY, light);
+      }
+    }
+    function scheduleSave() {
+      clearTimeout(state.saveTimer);
+      state.saveTimer = setTimeout(saveNow, 250);
+    }
+    function currentProject() { return state.projects.find((p) => p.id === state.currentProjectId) || state.projects[0]; }
+    function currentRoom(project = currentProject()) {
+      if (!project) return null;
+      return project.rooms.find((r) => r.id === UI.roomId) || project.rooms[0] || null;
+    }
+    function roomCfg(room) { return ROOM_TYPES[room.type]; }
+    function entryKey(roomId, itemId) { return `${roomId}::${itemId}`; }
+    function groupKey(roomId, groupId) { return `${roomId}::${groupId}`; }
+    function getEntry(project, roomId, itemId) {
+      const key = entryKey(roomId, itemId);
+      if (!project.entries[key]) project.entries[key] = { checked: false, qty: "", cost: "", unit: "", notes: "", serial: "" };
+      return project.entries[key];
+    }
+    function baseItemCost(item) {
+      if (state.globalPrices[item.id] !== undefined) return Number(state.globalPrices[item.id]);
+      return Number(item.cost) || 0;
+    }
+    function itemCost(project, roomId, item) {
+      const entry = getEntry(project, roomId, item.id);
+      if (entry.cost !== "" && entry.cost !== null && !Number.isNaN(Number(entry.cost))) return Number(entry.cost);
+      return baseItemCost(item);
+    }
+    function populateEntryDefaults(project, roomId, item) {
+      const entry = getEntry(project, roomId, item.id);
+      if (entry.cost === "" || entry.cost === null || Number.isNaN(Number(entry.cost))) entry.cost = String(baseItemCost(item));
+      if (!entry.unit) entry.unit = item.unit || "sqft";
+      return entry;
+    }
+    function itemUnit(project, roomId, item) {
+      const entry = getEntry(project, roomId, item.id);
+      return entry.unit || item.unit || "sqft";
+    }
+    function unitOptions(selected) {
+      const units = Array.from(new Set([selected || "sqft", ...MEASUREMENT_UNITS])).filter(Boolean);
+      return units.map((unit) => `<option value="${esc(unit)}" ${unit === selected ? "selected" : ""}>${esc(unit)}</option>`).join("");
+    }
+    function lineTotal(project, roomId, item) {
+      const entry = getEntry(project, roomId, item.id);
+      if (!entry.checked) return 0;
+      const qty = Number(entry.qty) || 0;
+      return qty > 0 ? qty * itemCost(project, roomId, item) : 0;
+    }
+    function customItemsFor(project, roomId, groupId) {
+      return project.customItems.filter((item) => item.roomId === roomId && item.groupId === groupId);
+    }
+    function groupItems(project, room, group) {
+      const defaults = group.ids
+        .filter((id) => ITEM[id] && !project.deletedItems[entryKey(room.id, id)])
+        .map((id) => ITEM[id]);
+      return defaults.concat(customItemsFor(project, room.id, group.id));
+    }
+    function groupTotal(project, room, group) {
+      return groupItems(project, room, group).reduce((sum, item) => sum + lineTotal(project, room.id, item), 0);
+    }
+    function normalizeProjectDefaults(project) {
+      project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => {
+        groupItems(project, room, group).forEach((item) => {
+          const entry = getEntry(project, room.id, item.id);
+          if (entry.checked) populateEntryDefaults(project, room.id, item);
+        });
+      }));
+    }
+    function roomTotal(project, room) {
+      return roomCfg(room).groups.reduce((sum, group) => sum + groupTotal(project, room, group), 0);
+    }
+    function projectTotal(project = currentProject()) {
+      return project.rooms.reduce((sum, room) => sum + roomTotal(project, room), 0);
+    }
+    function groupComplete(project, room, group) {
+      if (project.groupReviews[groupKey(room.id, group.id)] === "noAction") return true;
+      return groupItems(project, room, group).some((item) => getEntry(project, room.id, item.id).checked);
+    }
+    function progress(project = currentProject()) {
+      let total = 0, done = 0;
+      project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => {
+        total++;
+        if (groupComplete(project, room, group)) done++;
+      }));
+      return { total, done, pct: total ? Math.round(done / total * 100) : 0 };
+    }
+    function dealNumbers(project = currentProject()) {
+      const repair = projectTotal(project);
+      const arv = Number(project.deal.arv) || 0;
+      const targetProfit = Number(project.deal.targetProfit) || 0;
+      const holdingCost = Number(project.deal.holdingCost) || 0;
+      const riskPct = Number(project.deal.riskPct) || 0;
+      const risk = repair * riskPct / 100;
+      const maxOffer = arv - repair - risk - targetProfit - holdingCost;
+      const offer = Number(project.deal.offer) || 0;
+      let status = "Needs ARV";
+      let mood = "";
+      let message = "Enter ARV to calculate max allowable offer.";
+      if (arv > 0) {
+        if (!offer) { status = "Max Offer Ready"; mood = "good"; message = `Stay at or below ${dollars(maxOffer)} before submitting an offer.`; }
+        else if (offer <= maxOffer) { status = "Offer Fits"; mood = "good"; message = `${dollars(maxOffer - offer)} cushion against the max offer.`; }
+        else if (offer <= maxOffer + 5000) { status = "Tight Deal"; mood = "warn"; message = `Offer is ${dollars(offer - maxOffer)} above target. Review repair scope.`; }
+        else { status = "Do Not Offer"; mood = "bad"; message = `Offer is ${dollars(offer - maxOffer)} above the max allowable offer.`; }
+      }
+      return { repair, arv, targetProfit, holdingCost, riskPct, risk, maxOffer, offer, status, mood, message };
+    }
+    function criticalWarnings(project = currentProject()) {
+      const warnings = [];
+      project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => {
+        if (group.critical && !groupComplete(project, room, group)) warnings.push(`${room.name}: ${group.label} not reviewed`);
+      }));
+      return warnings;
+    }
+
+    function render() {
+      const project = currentProject();
+      const prog = progress(project);
+      app.innerHTML = `
+        <div class="app">
+          <header class="topbar">
+            <div class="toprow">
+              <button class="iconbtn" data-action="open-projects" aria-label="Projects">P</button>
+              <div class="brand">
+                <img src="./Logo.png" alt="Spark Homes">
+                <small>Repair Estimator</small>
+              </div>
+              <div style="display:flex;gap:7px">
+                <button class="iconbtn" data-action="open-settings" aria-label="Settings">S</button>
+                <button class="iconbtn spark" data-action="export" aria-label="Export">E</button>
+              </div>
+            </div>
+            <div class="totals">
+              <p class="kicker">Running Total</p>
+              <div class="totalrow">
+                <p class="total" data-project-total>${dollars(projectTotal(project))}</p>
+                <button class="mini" data-action="rename-project">Rename</button>
+              </div>
+              <p class="project-name">${esc(project.name)}</p>
+              <div class="progress-wrap">
+                <div class="progress"><span data-progress-bar style="width:${prog.pct}%"></span></div>
+                <div class="progress-label" data-progress-label>${prog.done}/${prog.total}</div>
+              </div>
+            </div>
+          </header>
+          <nav class="views">
+            <button data-view="walk" class="${UI.view === "walk" ? "active" : ""}">Walkthrough</button>
+            <button data-view="deal" class="${UI.view === "deal" ? "active" : ""}">Deal Guard</button>
+            <button data-view="summary" class="${UI.view === "summary" ? "active" : ""}">Summary</button>
+          </nav>
+          <main class="main">${UI.view === "deal" ? renderDeal(project) : UI.view === "summary" ? renderSummary(project) : renderWalk(project)}</main>
+          <div class="bottom-actions">
+            <div class="bottom-grid">
+              <button class="secondary" data-action="open-add-room">Add Room</button>
+              <button class="primary" data-action="export">Export ZIP</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function renderWalk(project) {
+      const room = currentRoom(project);
+      if (!room) return `<div class="empty">Add a room to start the estimate.</div>`;
+      if (!UI.roomId) UI.roomId = room.id;
+      return `
+        <div class="room-rail">
+          ${project.rooms.map((r) => `<button class="pill ${r.id === room.id ? "active" : ""}" data-action="switch-room" data-room-id="${r.id}">${esc(r.name)} ${roomTotal(project, r) ? dollars(roomTotal(project, r)) : ""}</button>`).join("")}
+          <button class="pill" data-action="open-add-room">+ Add</button>
+        </div>
+        <section class="panel">
+          <div class="room-head">
+            <div>
+              <h1>${esc(room.name)}</h1>
+              <p>${esc(roomCfg(room).label)} - ${dollars(roomTotal(project, room))}</p>
+            </div>
+            <div class="small-actions">
+              <button class="mini" data-action="rename-room" data-room-id="${room.id}">Rename</button>
+              ${project.rooms.length > 1 ? `<button class="mini danger" data-action="delete-room" data-room-id="${room.id}">Remove</button>` : ""}
+            </div>
+          </div>
+        </section>
+        ${roomCfg(room).groups.map((group) => renderGroup(project, room, group)).join("")}`;
+    }
+
+    function renderGroup(project, room, group) {
+      const openKey = groupKey(room.id, group.id);
+      const open = UI.openGroups.has(openKey);
+      const complete = groupComplete(project, room, group);
+      const noAction = project.groupReviews[openKey] === "noAction";
+      const items = groupItems(project, room, group);
+      return `
+        <section class="group ${complete ? "done" : ""}" data-group="${openKey}">
+          <button class="group-top" data-action="toggle-group" data-key="${openKey}">
+            <span class="group-title">
+              <span class="chev">${open ? "^" : "v"}</span>
+              <span>
+                <strong>${esc(room.name)}: ${esc(group.label)}</strong>
+                <span>${complete ? (noAction ? "Reviewed - no action" : "Work selected") : "Needs review"}</span>
+              </span>
+            </span>
+            <span class="group-total" data-group-total="${openKey}">${dollars(groupTotal(project, room, group))}</span>
+          </button>
+          ${open ? `<div class="group-body">
+            <div class="group-tools">
+              <button class="toolbtn ${noAction ? "active" : ""}" data-action="no-action" data-room-id="${room.id}" data-group-id="${group.id}">No Action Needed</button>
+              <button class="toolbtn" data-action="open-add-item" data-room-id="${room.id}" data-group-id="${group.id}">Add Item</button>
+            </div>
+            ${items.map((item) => renderItem(project, room, group, item)).join("")}
+          </div>` : ""}
+        </section>`;
+    }
+
+    function renderItem(project, room, group, item) {
+      const entry = getEntry(project, room.id, item.id);
+      const key = entryKey(room.id, item.id);
+      const selected = entry.checked;
+      const photos = project.photos[key] || [];
+      const isSystem = item.id.startsWith("as-") || item.id.startsWith("kt-1");
+      return `
+        <article class="item ${selected ? "selected" : ""}" data-item-card="${key}">
+          <div class="item-main">
+            <button class="check ${selected ? "on" : ""}" data-action="toggle-item" data-room-id="${room.id}" data-item-id="${item.id}" data-group-id="${group.id}">${selected ? "OK" : ""}</button>
+            <div class="item-copy">
+              <div class="item-line">
+                <div>
+                  <p class="item-name">${esc(item.name)}</p>
+                  <p class="item-meta">${dollars(itemCost(project, room.id, item))} / ${esc(itemUnit(project, room.id, item))}</p>
+                </div>
+                <strong class="line-total" data-line-total="${key}">${dollars(lineTotal(project, room.id, item))}</strong>
+              </div>
+            </div>
+            <button class="mini danger" data-action="delete-item" data-room-id="${room.id}" data-item-id="${item.id}" data-group-id="${group.id}">Del</button>
+          </div>
+          ${selected ? `
+            <div class="item-fields ${isSystem ? "" : "wide"}">
+              <label class="field"><span>Qty</span><input data-action="field" data-field="qty" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="decimal" step="any" min="0" value="${esc(entry.qty)}" placeholder="0"></label>
+              <label class="field"><span>Unit Cost</span><input data-action="field" data-field="cost" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="decimal" step="any" min="0" value="${esc(entry.cost)}" placeholder="0"></label>
+              <label class="field"><span>Measurement</span><select data-action="field" data-field="unit" data-room-id="${room.id}" data-item-id="${item.id}">${unitOptions(itemUnit(project, room.id, item))}</select></label>
+              ${isSystem ? `<label class="field"><span>Year</span><input data-action="field" data-field="year" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="numeric" value="${esc(entry.year || "")}" placeholder="2015"></label>
+              <label class="field"><span>Serial</span><input data-action="field" data-field="serial" data-room-id="${room.id}" data-item-id="${item.id}" value="${esc(entry.serial || "")}" placeholder="Manual capture"></label>` : ""}
+              <label class="field" style="grid-column:1/-1"><span>Notes</span><textarea data-action="field" data-field="notes" data-room-id="${room.id}" data-item-id="${item.id}" placeholder="Condition, location, measurement, quote note">${esc(entry.notes || "")}</textarea></label>
+            </div>
+            <div class="photo-strip">
+              ${photos.map((photo, i) => `<span class="photo-wrap"><img class="photo" src="${photo.dataUrl}" alt="${esc(photo.name || "Photo")}"><button class="photo-x" data-action="remove-photo" data-room-id="${room.id}" data-item-id="${item.id}" data-index="${i}">x</button></span>`).join("")}
+              <button class="add-photo" data-action="add-photo" data-room-id="${room.id}" data-item-id="${item.id}">Add<br>Photo</button>
+            </div>` : ""}
+        </article>`;
+    }
+
+    function renderDeal(project) {
+      const d = dealNumbers(project);
+      const warnings = criticalWarnings(project);
+      return `
+        <section class="deal-status ${d.mood}">
+          <h2>${esc(d.status)}</h2>
+          <p>${esc(d.message)}</p>
+        </section>
+        ${warnings.map((w) => `<div class="warning">${esc(w)}</div>`).join("")}
+        <section class="panel">
+          <div class="room-head"><h2>Deal Guard</h2><p>Offer math tied to this repair scope.</p></div>
+          <div style="padding:13px" class="form-grid">
+            <div class="stat-grid">
+              <label class="field"><span>ARV</span><input data-action="deal-field" data-field="arv" type="number" inputmode="decimal" value="${esc(project.deal.arv)}" placeholder="185000"></label>
+              <label class="field"><span>Offer Price</span><input data-action="deal-field" data-field="offer" type="number" inputmode="decimal" value="${esc(project.deal.offer)}" placeholder="Optional"></label>
+              <label class="field"><span>Target Profit</span><input data-action="deal-field" data-field="targetProfit" type="number" inputmode="decimal" value="${esc(project.deal.targetProfit)}"></label>
+              <label class="field"><span>Holding / Closing</span><input data-action="deal-field" data-field="holdingCost" type="number" inputmode="decimal" value="${esc(project.deal.holdingCost)}"></label>
+              <label class="field"><span>Risk Buffer %</span><input data-action="deal-field" data-field="riskPct" type="number" inputmode="decimal" value="${esc(project.deal.riskPct)}"></label>
+            </div>
+            <div class="stat-grid" data-deal-stats>
+              ${renderDealStats(d)}
+            </div>
+          </div>
+        </section>`;
+    }
+    function renderDealStats(d) {
+      return `
+        <div class="stat"><span>Repairs</span><strong>${dollars(d.repair)}</strong></div>
+        <div class="stat"><span>Risk Buffer</span><strong>${dollars(d.risk)}</strong></div>
+        <div class="stat"><span>Max Offer</span><strong>${dollars(d.maxOffer)}</strong></div>
+        <div class="stat"><span>All-In Before Resale</span><strong>${dollars((d.offer || d.maxOffer) + d.repair + d.risk + d.holdingCost)}</strong></div>`;
+    }
+
+    function selectedRows(project = currentProject()) {
+      const rows = [];
+      project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => {
+        groupItems(project, room, group).forEach((item) => {
+          const entry = getEntry(project, room.id, item.id);
+          const total = lineTotal(project, room.id, item);
+          if (entry.checked && (Number(entry.qty) > 0 || entry.notes || total > 0)) {
+            rows.push({ room, group, item, entry, total, cost: itemCost(project, room.id, item), unit: itemUnit(project, room.id, item), key: entryKey(room.id, item.id) });
+          }
+        });
+      }));
+      return rows;
+    }
+    function renderSummary(project) {
+      const rows = selectedRows(project);
+      const byRoom = new Map();
+      rows.forEach((row) => {
+        if (!byRoom.has(row.room.id)) byRoom.set(row.room.id, []);
+        byRoom.get(row.room.id).push(row);
+      });
+      return `
+        <div class="stat-grid" style="margin-bottom:12px">
+          <div class="stat"><span>Total Repairs</span><strong>${dollars(projectTotal(project))}</strong></div>
+          <div class="stat"><span>Progress</span><strong>${progress(project).pct}%</strong></div>
+        </div>
+        ${rows.length ? Array.from(byRoom.entries()).map(([roomId, roomRows]) => {
+          const room = project.rooms.find((r) => r.id === roomId);
+          const total = roomRows.reduce((sum, row) => sum + row.total, 0);
+          return `<section class="summary-section">
+            <div class="summary-head"><span>${esc(room.name)}</span><span>${dollars(total)}</span></div>
+            ${roomRows.map((row) => `<div class="summary-row"><div><p>${esc(row.group.label)} - ${esc(row.item.name)}</p><span>${esc(row.entry.qty)} ${esc(row.unit)} at ${dollars(row.cost)}${row.entry.notes ? " - " + esc(row.entry.notes) : ""}</span></div><div class="money">${dollars(row.total)}</div></div>`).join("")}
+          </section>`;
+        }).join("") : `<div class="empty">No repair items selected yet.</div>`}
+        <button class="primary" style="width:100%;margin-top:4px" data-action="export">Export Estimate ZIP</button>`;
+    }
+
+    function refreshNumbers() {
+      const project = currentProject();
+      document.querySelector("[data-project-total]")?.replaceChildren(document.createTextNode(dollars(projectTotal(project))));
+      const prog = progress(project);
+      const bar = document.querySelector("[data-progress-bar]");
+      if (bar) bar.style.width = `${prog.pct}%`;
+      document.querySelector("[data-progress-label]")?.replaceChildren(document.createTextNode(`${prog.done}/${prog.total}`));
+      project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => {
+        const gEl = document.querySelector(`[data-group-total="${groupKey(room.id, group.id)}"]`);
+        if (gEl) gEl.textContent = dollars(groupTotal(project, room, group));
+        groupItems(project, room, group).forEach((item) => {
+          const el = document.querySelector(`[data-line-total="${entryKey(room.id, item.id)}"]`);
+          if (el) el.textContent = dollars(lineTotal(project, room.id, item));
+        });
+      }));
+      if (UI.view === "deal") {
+        const stats = document.querySelector("[data-deal-stats]");
+        if (stats) stats.innerHTML = renderDealStats(dealNumbers(project));
+      }
+    }
+
+    function openSheet(html) {
+      sheetContent.innerHTML = html;
+      sheet.classList.add("show");
+      sheet.setAttribute("aria-hidden", "false");
+    }
+    function closeSheet() {
+      sheet.classList.remove("show");
+      sheet.setAttribute("aria-hidden", "true");
+      sheetContent.innerHTML = "";
+    }
+    function openProjects() {
+      const project = currentProject();
+      openSheet(`
+        <h2>Projects</h2>
+        ${state.projects.map((p) => `<button class="project-row" data-action="select-project" data-project-id="${p.id}"><span><strong>${esc(p.name)}</strong><span>${dateLabel(p.updatedAt)} - ${dollars(projectTotal(p))}</span></span><b>${p.id === project.id ? "Active" : "Open"}</b></button>`).join("")}
+        <div class="form-grid" style="margin-top:12px">
+          <button class="primary" data-action="new-project">New Project</button>
+          <button class="secondary" data-action="close-sheet">Close</button>
+        </div>`);
+    }
+    function openAddRoom() {
+      openSheet(`
+        <h2>Add Room / Section</h2>
+        <div class="form-grid">
+          <label class="field"><span>Room Type</span><select id="new-room-type">${Object.entries(ROOM_TYPES).map(([id, cfg]) => `<option value="${id}">${esc(cfg.label)}</option>`).join("")}</select></label>
+          <label class="field"><span>Room Name</span><input id="new-room-name" placeholder="Auto name if blank"></label>
+          <button class="primary" data-action="add-room-confirm">Add Room</button>
+          <button class="secondary" data-action="close-sheet">Cancel</button>
+        </div>`);
+    }
+    function openAddItem(roomId, groupId) {
+      openSheet(`
+        <h2>Add Line Item</h2>
+        <div class="form-grid">
+          <label class="field"><span>Name</span><input id="custom-name" placeholder="Repair item"></label>
+          <label class="field"><span>Unit Cost</span><input id="custom-cost" type="number" inputmode="decimal" placeholder="0"></label>
+          <label class="field"><span>Measurement</span><select id="custom-unit">${unitOptions("sqft")}</select></label>
+          <button class="primary" data-action="add-item-confirm" data-room-id="${roomId}" data-group-id="${groupId}">Add Item</button>
+          <button class="secondary" data-action="close-sheet">Cancel</button>
+        </div>`);
+    }
+    function openSettings() {
+      openSheet(`
+        <h2>Settings</h2>
+        <div class="form-grid">
+          <div class="warning">Global pricing updates apply across all saved projects unless a line item has its own unit cost override.</div>
+          <label class="field"><span>Upload Pricing CSV</span><input id="price-file" type="file" accept=".csv,text/csv"></label>
+          <button class="primary" data-action="import-prices">Import Global Prices</button>
+          <button class="dangerbtn" data-action="reset-prices">Reset Global Prices</button>
+          <button class="secondary" data-action="close-sheet">Close</button>
+        </div>`);
+    }
+
+    document.body.addEventListener("click", async (event) => {
+      const btn = event.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const project = currentProject();
+      if (action === "close-sheet") return closeSheet();
+      if (action === "open-projects") return openProjects();
+      if (action === "open-settings") return openSettings();
+      if (action === "open-add-room") return openAddRoom();
+      if (action === "rename-project") {
+        const name = prompt("Project name", project.name);
+        if (name && name.trim()) { project.name = name.trim(); saveNow(); render(); }
+        return;
+      }
+      if (action === "new-project") {
+        const name = prompt("Project name", "New Estimate") || "New Estimate";
+        const next = createProject(name.trim());
+        state.projects.unshift(next);
+        state.currentProjectId = next.id;
+        UI.roomId = next.rooms[0].id;
+        saveNow(); closeSheet(); render(); return;
+      }
+      if (action === "select-project") {
+        state.currentProjectId = btn.dataset.projectId;
+        UI.roomId = currentProject().rooms[0]?.id || null;
+        closeSheet(); render(); return;
+      }
+      if (action === "switch-room") { UI.roomId = btn.dataset.roomId; render(); return; }
+      if (action === "toggle-group") {
+        const key = btn.dataset.key;
+        UI.openGroups.has(key) ? UI.openGroups.delete(key) : UI.openGroups.add(key);
+        render(); return;
+      }
+      if (action === "toggle-item") {
+        const entry = getEntry(project, btn.dataset.roomId, btn.dataset.itemId);
+        const item = ITEM[btn.dataset.itemId] || project.customItems.find((custom) => custom.id === btn.dataset.itemId);
+        entry.checked = !entry.checked;
+        if (entry.checked && item) {
+          if (entry.cost === "" || entry.cost === null || Number.isNaN(Number(entry.cost))) entry.cost = String(itemCost(project, btn.dataset.roomId, item));
+          if (!entry.unit) entry.unit = item.unit || "sqft";
+          project.groupReviews[groupKey(btn.dataset.roomId, btn.dataset.groupId)] = "";
+        }
+        saveNow(); render(); return;
+      }
+      if (action === "no-action") {
+        const key = groupKey(btn.dataset.roomId, btn.dataset.groupId);
+        project.groupReviews[key] = project.groupReviews[key] === "noAction" ? "" : "noAction";
+        saveNow(); render(); return;
+      }
+      if (action === "open-add-item") return openAddItem(btn.dataset.roomId, btn.dataset.groupId);
+      if (action === "add-item-confirm") {
+        const name = document.getElementById("custom-name").value.trim();
+        const cost = Number(document.getElementById("custom-cost").value) || 0;
+        const unit = document.getElementById("custom-unit").value || "sqft";
+        if (!name) return alert("Item name is required.");
+        const item = { id: uid("custom"), roomId: btn.dataset.roomId, groupId: btn.dataset.groupId, name, cost, unit, custom: true };
+        project.customItems.push(item);
+        closeSheet(); saveNow(); render(); return;
+      }
+      if (action === "delete-item") {
+        if (!confirm("Delete this item from this project?")) return;
+        const key = entryKey(btn.dataset.roomId, btn.dataset.itemId);
+        if (btn.dataset.itemId.startsWith("custom")) project.customItems = project.customItems.filter((item) => item.id !== btn.dataset.itemId);
+        else project.deletedItems[key] = true;
+        delete project.entries[key];
+        delete project.photos[key];
+        saveNow(); render(); return;
+      }
+      if (action === "rename-room") {
+        const room = project.rooms.find((r) => r.id === btn.dataset.roomId);
+        const name = prompt("Room name", room.name);
+        if (name && name.trim()) { room.name = name.trim(); saveNow(); render(); }
+        return;
+      }
+      if (action === "delete-room") {
+        if (!confirm("Remove this room and its estimate data?")) return;
+        const roomId = btn.dataset.roomId;
+        project.rooms = project.rooms.filter((r) => r.id !== roomId);
+        Object.keys(project.entries).forEach((key) => { if (key.startsWith(`${roomId}::`)) delete project.entries[key]; });
+        Object.keys(project.photos).forEach((key) => { if (key.startsWith(`${roomId}::`)) delete project.photos[key]; });
+        project.customItems = project.customItems.filter((item) => item.roomId !== roomId);
+        UI.roomId = project.rooms[0]?.id || null;
+        saveNow(); render(); return;
+      }
+      if (action === "add-room-confirm") {
+        const type = document.getElementById("new-room-type").value;
+        const sameTypeCount = project.rooms.filter((r) => r.type === type).length + 1;
+        const room = createRoom(type, sameTypeCount);
+        const name = document.getElementById("new-room-name").value.trim();
+        if (name) room.name = name;
+        project.rooms.push(room);
+        UI.roomId = room.id;
+        closeSheet(); saveNow(); render(); return;
+      }
+      if (action === "add-photo") return addPhoto(btn.dataset.roomId, btn.dataset.itemId);
+      if (action === "remove-photo") {
+        const key = entryKey(btn.dataset.roomId, btn.dataset.itemId);
+        project.photos[key]?.splice(Number(btn.dataset.index), 1);
+        saveNow(); render(); return;
+      }
+      if (action === "import-prices") return importPrices();
+      if (action === "reset-prices") {
+        if (!confirm("Reset all global pricing overrides?")) return;
+        state.globalPrices = {};
+        saveNow(); closeSheet(); render(); return;
+      }
+      if (action === "export") return exportProject();
+    });
+
+    document.body.addEventListener("click", (event) => {
+      const viewBtn = event.target.closest("[data-view]");
+      if (!viewBtn) return;
+      UI.view = viewBtn.dataset.view;
+      render();
+    });
+
+    document.body.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-action='field']");
+      const dealInput = event.target.closest("[data-action='deal-field']");
+      const project = currentProject();
+      if (input) {
+        const entry = getEntry(project, input.dataset.roomId, input.dataset.itemId);
+        entry[input.dataset.field] = input.value;
+        scheduleSave();
+        refreshNumbers();
+      }
+      if (dealInput) {
+        project.deal[dealInput.dataset.field] = dealInput.value;
+        scheduleSave();
+        refreshNumbers();
+      }
+    });
+
+    async function addPhoto(roomId, itemId) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.capture = "environment";
+      input.style.position = "fixed";
+      input.style.left = "-9999px";
+      document.body.appendChild(input);
+      input.onchange = async () => {
+        const project = currentProject();
+        const key = entryKey(roomId, itemId);
+        if (!project.photos[key]) project.photos[key] = [];
+        for (const file of Array.from(input.files || [])) project.photos[key].push({ name: file.name, dataUrl: await compressImage(file) });
+        document.body.removeChild(input);
+        saveNow(); render();
+      };
+      input.click();
+    }
+    function compressImage(file, maxDim = 1400, quality = .78) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * ratio);
+            canvas.height = Math.round(img.height * ratio);
+            canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", quality));
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    function importPrices() {
+      const file = document.getElementById("price-file")?.files?.[0];
+      if (!file) return alert("Choose a CSV file first.");
+      const reader = new FileReader();
+      reader.onload = () => {
+        const rows = parseCSV(reader.result);
+        let count = 0;
+        rows.forEach((row) => {
+          if (row.id && row.cost !== undefined && !Number.isNaN(Number(row.cost))) {
+            state.globalPrices[row.id.trim()] = Number(row.cost);
+            count++;
+          }
+        });
+        saveNow(); closeSheet(); render();
+        alert(`${count} prices imported.`);
+      };
+      reader.readAsText(file);
+    }
+
+    function xmlEsc(value) { return String(value ?? "").replace(/[<>&"']/g, (ch) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[ch])); }
+    function colName(index) {
+      let name = "";
+      index++;
+      while (index) { const mod = (index - 1) % 26; name = String.fromCharCode(65 + mod) + name; index = Math.floor((index - mod) / 26); }
+      return name;
+    }
+    function sheetXml(rows) {
+      return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.map((row, r) => `<row r="${r + 1}">${row.map((cell, c) => {
+        const ref = `${colName(c)}${r + 1}`;
+        if (typeof cell === "number") return `<c r="${ref}"><v>${cell}</v></c>`;
+        return `<c r="${ref}" t="inlineStr"><is><t>${xmlEsc(cell)}</t></is></c>`;
+      }).join("")}</row>`).join("")}</sheetData></worksheet>`;
+    }
+    function makeXlsx(project) {
+      const estimateRows = [["Spark Homes Repair Estimate"], ["Project", project.name], ["Date", new Date().toLocaleDateString()], [], ["Room", "Group", "Item", "Unit", "Unit Cost", "Qty", "Line Total", "Notes", "Serial"]];
+      selectedRows(project).forEach((row) => estimateRows.push([row.room.name, row.group.label, row.item.name, row.unit, row.cost, Number(row.entry.qty) || 0, row.total, row.entry.notes || "", row.entry.serial || ""]));
+      estimateRows.push([], ["Grand Total", "", "", "", "", "", projectTotal(project)]);
+      const d = dealNumbers(project);
+      const dealRows = [["Deal Guard"], ["ARV", d.arv], ["Repair Total", d.repair], ["Risk Buffer", d.risk], ["Holding / Closing", d.holdingCost], ["Target Profit", d.targetProfit], ["Max Allowable Offer", d.maxOffer], ["Offer Price", d.offer], ["Status", d.status], ["Warnings", criticalWarnings(project).join("; ")]];
+      const files = {
+        "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
+        "_rels/.rels": `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
+        "xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Estimate" sheetId="1" r:id="rId1"/><sheet name="Deal Guard" sheetId="2" r:id="rId2"/></sheets></workbook>`,
+        "xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>`,
+        "xl/worksheets/sheet1.xml": sheetXml(estimateRows),
+        "xl/worksheets/sheet2.xml": sheetXml(dealRows)
+      };
+      return zipFiles(Object.entries(files).map(([name, data]) => ({ name, data })));
+    }
+    function crc32(bytes) {
+      let crc = -1;
+      for (let i = 0; i < bytes.length; i++) {
+        crc ^= bytes[i];
+        for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+      }
+      return (crc ^ -1) >>> 0;
+    }
+    function u16(n) { return [n & 255, (n >>> 8) & 255]; }
+    function u32(n) { return [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255]; }
+    function toBytes(data) {
+      if (data instanceof Uint8Array) return data;
+      if (data instanceof ArrayBuffer) return new Uint8Array(data);
+      return new TextEncoder().encode(String(data));
+    }
+    function zipFiles(files) {
+      const chunks = [], central = [];
+      let offset = 0;
+      files.forEach((file) => {
+        const name = new TextEncoder().encode(file.name);
+        const data = toBytes(file.data);
+        const crc = crc32(data);
+        const local = new Uint8Array([80,75,3,4,20,0,0,0,0,0,0,0,0,0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), 0,0]);
+        chunks.push(local, name, data);
+        central.push({ name, crc, size: data.length, offset });
+        offset += local.length + name.length + data.length;
+      });
+      let centralSize = 0;
+      central.forEach((file) => {
+        const c = new Uint8Array([80,75,1,2,20,0,20,0,0,0,0,0,0,0,0,0, ...u32(file.crc), ...u32(file.size), ...u32(file.size), ...u16(file.name.length), 0,0,0,0,0,0,0,0,0,0, ...u32(file.offset)]);
+        chunks.push(c, file.name);
+        centralSize += c.length + file.name.length;
+      });
+      const end = new Uint8Array([80,75,5,6,0,0,0,0, ...u16(central.length), ...u16(central.length), ...u32(centralSize), ...u32(offset), 0,0]);
+      chunks.push(end);
+      const total = chunks.reduce((sum, part) => sum + part.length, 0);
+      const out = new Uint8Array(total);
+      let pos = 0;
+      chunks.forEach((part) => { out.set(part, pos); pos += part.length; });
+      return out;
+    }
+    function dataUrlBytes(dataUrl) {
+      const [head, data] = dataUrl.split(",");
+      const mime = (head.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
+      const bin = atob(data);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return { mime, bytes };
+    }
+    async function exportProject() {
+      const project = currentProject();
+      saveNow();
+      const safeName = project.name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "Spark_Estimate";
+      const files = [{ name: `${safeName}.xlsx`, data: makeXlsx(project) }];
+      Object.entries(project.photos).forEach(([key, photos]) => {
+        const row = selectedRows(project).find((r) => r.key === key);
+        const prefix = row ? `${row.room.name}_${row.group.label}_${row.item.name}` : key;
+        photos.forEach((photo, i) => {
+          const { bytes } = dataUrlBytes(photo.dataUrl);
+          files.push({ name: `photos/${prefix.replace(/[^a-z0-9]+/gi, "_")}_${i + 1}.jpg`, data: bytes });
+        });
+      });
+      const zip = zipFiles(files);
+      const blob = new Blob([zip], { type: "application/zip" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${safeName}_Spark_Estimate.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }
+
+    loadState();
+    render();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
