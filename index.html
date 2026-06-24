@@ -102,6 +102,8 @@
     .photo-wrap { position: relative; flex: 0 0 auto; }
     .photo-x { position: absolute; top: -7px; right: -7px; width: 25px; height: 25px; border-radius: 50%; background: var(--bad); color: white; font-weight: 800; }
     .add-photo { flex: 0 0 auto; width: 76px; height: 76px; border-radius: 8px; border: 1px dashed #111111; color: #111111; background: #ffffff; font-size: 11px; font-weight: 800; }
+    .serial-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr; gap: 6px; }
+    .scan-status { color: var(--muted); font-size: 12px; font-weight: 700; line-height: 1.35; }
     .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
     .bottom-actions { position: fixed; left: 0; right: 0; bottom: 0; z-index: 18; padding: 10px 12px max(12px, env(safe-area-inset-bottom)); background: rgba(242,242,242,.96); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
     .bottom-grid { max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
@@ -306,6 +308,55 @@ ex-23,Garage Conversion,8850.00,ea.`;
     const ITEMS = parseCSV(PRICE_CSV).map((r) => ({ id: r.id, name: r.name, cost: Number(r.cost), unit: r.unit }));
     const ITEM = Object.fromEntries(ITEMS.map((item) => [item.id, item]));
     const MEASUREMENT_UNITS = ["sqft", "ea.", "LF", "room", "flat", "load", "kitchen", "house", "door", "handle", "pier", "square", "section", "tree", "stump", "pane", "sf", "mowing", "variable", "1,000 sqft", "100 sqft", "225 sqft L&M", "1,600 sqft house", "sqft of affected area"];
+    const REPAIR_LEVELS = ["Basic Repair", "Standard Repair", "Luxury Repair"];
+    const SCOPE_FIELD_DEFS = {
+      repairLevel: { label: "Repair Level", options: REPAIR_LEVELS, defaultValue: "Standard Repair" },
+      flooringMaterial: { label: "Flooring", options: ["Carpet", "LVP", "Laminate", "Tile", "Hardwood", "Sheet Vinyl"], defaultValue: "LVP" },
+      flooringScope: { label: "Floor Scope", options: ["Patch / Blend", "Room Replacement", "Whole-House Replacement", "Subfloor Repair", "Luxury Upgrade"], defaultValue: "Room Replacement" },
+      paintScope: { label: "Paint Scope", options: ["Touch-Up", "Room Repaint", "Whole-House Repaint", "Texture + Paint", "Premium Finish"], defaultValue: "Room Repaint" },
+      wallSeverity: { label: "Wall Damage", options: ["Minor", "Moderate", "Heavy", "To Studs"], defaultValue: "Moderate" },
+      doorType: { label: "Door Type", options: ["Interior Slab", "Prehung Interior", "Exterior", "Closet", "Hardware Only"], defaultValue: "Interior Slab" },
+      doorScope: { label: "Door Scope", options: ["Adjust / Repair", "Replace Door", "Replace Frame", "Paint + Hardware", "Full Upgrade"], defaultValue: "Replace Door" },
+      pestType: { label: "Pest Type", options: ["General Pest", "Termite", "Rodent", "Bed Bug", "Wasp / Hornet"], defaultValue: "General Pest" },
+      pestSeverity: { label: "Pest Severity", options: ["Preventive", "Active Issue", "Heavy Infestation", "Damage Present"], defaultValue: "Active Issue" },
+      finishScope: { label: "Finish Scope", options: ["Hardware", "Lighting", "Trim", "Haul Off", "Final Clean", "Staging"], defaultValue: "Final Clean" },
+      cabinetStyle: { label: "Cabinet Style", options: ["Shaker", "Flat Panel", "Raised Panel", "Slab", "Custom"], defaultValue: "Shaker" },
+      woodSpecies: { label: "Wood Species", options: ["MDF / Paint Grade", "Oak", "Maple", "Birch", "Cherry", "Walnut"], defaultValue: "MDF / Paint Grade" },
+      cabinetScope: { label: "Cabinet Scope", options: ["Hardware Only", "Paint / Refinish", "Door Faces", "Upper Cabinets", "Lower Cabinets", "Full Replacement"], defaultValue: "Paint / Refinish" },
+      countertopMaterial: { label: "Countertop", options: ["Laminate", "Butcher Block", "Granite", "Quartz", "Solid Surface", "Marble"], defaultValue: "Granite" },
+      tileScope: { label: "Tile Scope", options: ["Backsplash", "Small Area", "Large Area", "Repair Existing", "Premium Install"], defaultValue: "Backsplash" },
+      applianceCondition: { label: "Appliance Scope", options: ["Keep Existing", "Repair", "Replace Standard", "Replace Stainless", "Luxury Package"], defaultValue: "Replace Standard" },
+      applianceFinish: { label: "Appliance Finish", options: ["White", "Black", "Stainless", "Panel Ready"], defaultValue: "Stainless" },
+      vanityScope: { label: "Vanity Scope", options: ["Repair Existing", "New Bottom Vanity", "Home Center Vanity", "Custom Vanity", "Mirror / Accessories"], defaultValue: "New Bottom Vanity" },
+      fixtureFinish: { label: "Fixture Finish", options: ["Chrome", "Brushed Nickel", "Matte Black", "Bronze", "Premium"], defaultValue: "Brushed Nickel" },
+      tubShowerScope: { label: "Tub / Shower", options: ["Clean / Reglaze", "Tub Surround", "Plastic Insert", "Tile Surround", "Full Tear-Out"], defaultValue: "Clean / Reglaze" },
+      tileMaterial: { label: "Tile Material", options: ["Ceramic", "Porcelain", "Stone", "Luxury Tile"], defaultValue: "Ceramic" },
+      hvacType: { label: "HVAC Type", options: ["Furnace", "Condensing Unit", "Package Unit", "A-Coil", "Ducting", "Window Unit"], defaultValue: "Furnace" },
+      systemScope: { label: "System Scope", options: ["Inspect", "Service", "Repair", "Replace", "Full Replacement", "Safety Issue"], defaultValue: "Replace" },
+      systemUrgency: { label: "Urgency", options: ["Cosmetic", "Functional", "Code / Safety", "Critical"], defaultValue: "Functional" },
+      electricalScope: { label: "Electrical Scope", options: ["Switches / Outlets", "Panel Swap", "Partial Repair", "Full Rewire", "Aluminum Wiring"], defaultValue: "Partial Repair" },
+      structuralScope: { label: "Structural Scope", options: ["Subfloor", "Framing", "Pier", "Foam Injection", "Roof", "Plumbing"], defaultValue: "Framing" },
+      insulationScope: { label: "Insulation Scope", options: ["Wall Insulation", "Attic Insulation", "New Drywall", "Drywall Patch", "To Studs"], defaultValue: "New Drywall" },
+      waterHeaterScope: { label: "Water Heater", options: ["Expansion Tank", "Tank Replacement", "Code Update", "Full Replacement"], defaultValue: "Tank Replacement" },
+      fenceMaterial: { label: "Fence Material", options: ["Chain Link", "Wood Gate", "Privacy Wood", "Vinyl", "Metal"], defaultValue: "Privacy Wood" },
+      sidingMaterial: { label: "Siding Material", options: ["Vinyl", "Wood", "Fiber Cement", "Brick / Tuck Point", "Guttering"], defaultValue: "Vinyl" },
+      windowType: { label: "Window Type", options: ["Paint Existing", "Sash Replace", "Non-Insulated Repair", "Insulated Repair", "Pane Replace"], defaultValue: "Sash Replace" },
+      exteriorScope: { label: "Exterior Scope", options: ["Repair", "Replace Section", "Full Replacement", "Paint", "Upgrade"], defaultValue: "Repair" },
+      garageScope: { label: "Garage Scope", options: ["1-Car Door", "2-Car Door", "Opener", "Conversion", "Structural Repair"], defaultValue: "1-Car Door" },
+      treeScope: { label: "Tree Scope", options: ["Trim", "Remove", "Remove + Stump", "Stump Grind"], defaultValue: "Trim" },
+      siteScope: { label: "Site Scope", options: ["Landscaping", "Concrete Demo", "Concrete Pour", "Mowing", "Curb Appeal"], defaultValue: "Landscaping" },
+      closetScope: { label: "Closet Scope", options: ["Hardware", "Doors", "Shelving", "Full Closet"], defaultValue: "Doors" },
+      lightingScope: { label: "Lighting", options: ["Fixture Swap", "Ceiling Fan", "Can Lights", "Premium Fixtures"], defaultValue: "Fixture Swap" }
+    };
+    const ROOM_SCOPE_FIELDS = {
+      interior: { flooring: ["repairLevel", "flooringMaterial", "flooringScope"], paint: ["repairLevel", "paintScope", "wallSeverity"], doors: ["repairLevel", "doorType", "doorScope"], pest: ["repairLevel", "pestType", "pestSeverity"], finish: ["repairLevel", "finishScope"] },
+      kitchen: { cabinets: ["repairLevel", "cabinetScope", "cabinetStyle", "woodSpecies"], counters: ["repairLevel", "countertopMaterial", "tileScope"], appliances: ["repairLevel", "applianceCondition", "applianceFinish"] },
+      bathroom: { vanity: ["repairLevel", "vanityScope", "countertopMaterial", "fixtureFinish"], tub: ["repairLevel", "tubShowerScope", "fixtureFinish"], tile: ["repairLevel", "tileMaterial", "tileScope"] },
+      systems: { hvac: ["repairLevel", "hvacType", "systemScope", "systemUrgency"], electrical: ["repairLevel", "electricalScope", "systemUrgency"], structural: ["repairLevel", "structuralScope", "systemUrgency"], insulation: ["repairLevel", "insulationScope", "wallSeverity"], water: ["repairLevel", "waterHeaterScope", "systemUrgency"] },
+      exterior: { fence: ["repairLevel", "fenceMaterial", "exteriorScope"], siding: ["repairLevel", "sidingMaterial", "exteriorScope"], windows: ["repairLevel", "windowType", "exteriorScope"], garage: ["repairLevel", "garageScope"], trees: ["repairLevel", "treeScope"], site: ["repairLevel", "siteScope"] },
+      bedroom: { flooring: ["repairLevel", "flooringMaterial", "flooringScope"], paint: ["repairLevel", "paintScope", "wallSeverity"], doors: ["repairLevel", "doorType", "closetScope"] },
+      living: { flooring: ["repairLevel", "flooringMaterial", "flooringScope"], paint: ["repairLevel", "paintScope", "wallSeverity"], doors: ["repairLevel", "doorType", "doorScope"], lighting: ["repairLevel", "lightingScope"] }
+    };
 
     const ROOM_TYPES = {
       interior: { label: "Interior / General", defaultName: "Interior / General", section: "Interior", groups: [
@@ -456,6 +507,76 @@ ex-23,Garage Conversion,8850.00,ea.`;
     function unitOptions(selected) {
       const units = Array.from(new Set([selected || "sqft", ...MEASUREMENT_UNITS])).filter(Boolean);
       return units.map((unit) => `<option value="${esc(unit)}" ${unit === selected ? "selected" : ""}>${esc(unit)}</option>`).join("");
+    }
+    function selectOptions(options, selected) {
+      return options.map((option) => `<option value="${esc(option)}" ${option === selected ? "selected" : ""}>${esc(option)}</option>`).join("");
+    }
+    function scopeFieldIds(room, group, item) {
+      const ids = ROOM_SCOPE_FIELDS[room.type]?.[group.id] || ["repairLevel"];
+      return ids.filter((fieldId) => scopeFieldApplies(fieldId, room, group, item));
+    }
+    function scopeFieldApplies(fieldId, room, group, item) {
+      const name = item.name.toLowerCase();
+      if (fieldId === "countertopMaterial") return /counter|granite|vanity|backsplash/.test(name) || group.id === "counters";
+      if (fieldId === "tileScope" || fieldId === "tileMaterial") return /tile|backsplash/.test(name) || group.id === "tile";
+      if (fieldId === "fixtureFinish") return /sink|toilet|mirror|vanity|tub|shower|hvl/.test(name) || room.type === "bathroom";
+      if (fieldId === "applianceFinish" || fieldId === "applianceCondition") return group.id === "appliances";
+      return true;
+    }
+    function scopeFields(room, group, item, entry) {
+      return scopeFieldIds(room, group, item).map((fieldId) => {
+        const def = SCOPE_FIELD_DEFS[fieldId];
+        if (!def) return "";
+        const selected = entry[fieldId] || def.defaultValue || def.options[0];
+        return `<label class="field"><span>${esc(def.label)}</span><select data-action="field" data-field="${fieldId}" data-room-id="${room.id}" data-item-id="${item.id}">${selectOptions(def.options, selected)}</select></label>`;
+      }).join("");
+    }
+    function scopeDetails(row, includeRepair = true) {
+      const details = [];
+      scopeFieldIds(row.room, row.group, row.item).forEach((fieldId) => {
+        if (!includeRepair && fieldId === "repairLevel") return;
+        const def = SCOPE_FIELD_DEFS[fieldId];
+        if (!def) return;
+        details.push(`${def.label}: ${row.entry[fieldId] || def.defaultValue || def.options[0]}`);
+      });
+      return details.join("; ");
+    }
+    function repairLevelValue(row) {
+      if (!scopeFieldIds(row.room, row.group, row.item).includes("repairLevel")) return "";
+      return row.entry.repairLevel || SCOPE_FIELD_DEFS.repairLevel.defaultValue;
+    }
+    function isAssetTrackedItem(room, group, item) {
+      return (room.type === "kitchen" && group.id === "appliances") || (room.type === "systems" && (group.id === "hvac" || group.id === "water"));
+    }
+    function cleanSerialCandidate(value) {
+      const raw = String(value || "").replace(/\s+/g, " ").trim();
+      const labeled = raw.match(/(?:S\/?N|SN|SERIAL(?:\s*(?:NO|NUMBER))?)[\s:#-]*([A-Z0-9][A-Z0-9-]{3,39})/i);
+      const candidate = labeled ? labeled[1] : raw.match(/[A-Z0-9][A-Z0-9-]{4,39}/i)?.[0];
+      return candidate ? candidate.replace(/[^A-Z0-9-]/gi, "").toUpperCase() : "";
+    }
+    function imageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not load serial photo.")); };
+        img.src = url;
+      });
+    }
+    async function detectSerialFromImage(file) {
+      if (typeof BarcodeDetector === "undefined") return { serial: "", message: "Photo saved. Serial barcode scan is not available on this browser." };
+      try {
+        const formats = ["code_128", "code_39", "code_93", "codabar", "ean_13", "ean_8", "itf", "upc_a", "upc_e", "qr_code", "data_matrix"];
+        let detector;
+        try { detector = new BarcodeDetector({ formats }); }
+        catch { detector = new BarcodeDetector(); }
+        const image = await imageFromFile(file);
+        const results = await detector.detect(image);
+        const serial = results.map((result) => cleanSerialCandidate(result.rawValue)).find(Boolean) || "";
+        return serial ? { serial, message: "Serial captured from photo barcode." } : { serial: "", message: "Photo saved. No readable serial barcode found; enter serial manually." };
+      } catch {
+        return { serial: "", message: "Photo saved. Serial scan failed; enter serial manually." };
+      }
     }
     function lineTotal(project, roomId, item) {
       const entry = getEntry(project, roomId, item.id);
@@ -631,7 +752,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
       const key = entryKey(room.id, item.id);
       const selected = entry.checked;
       const photos = project.photos[key] || [];
-      const isSystem = item.id.startsWith("as-") || item.id.startsWith("kt-1");
+      const isAsset = isAssetTrackedItem(room, group, item);
       return `
         <article class="item ${selected ? "selected" : ""}" data-item-card="${key}">
           <div class="item-main">
@@ -648,12 +769,14 @@ ex-23,Garage Conversion,8850.00,ea.`;
             <button class="mini danger" data-action="delete-item" data-room-id="${room.id}" data-item-id="${item.id}" data-group-id="${group.id}">Del</button>
           </div>
           ${selected ? `
-            <div class="item-fields ${isSystem ? "" : "wide"}">
+            <div class="item-fields ${isAsset ? "" : "wide"}">
               <label class="field"><span>Qty</span><input data-action="field" data-field="qty" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="decimal" step="any" min="0" value="${esc(entry.qty)}" placeholder="0"></label>
               <label class="field"><span>Unit Cost</span><input data-action="field" data-field="cost" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="decimal" step="any" min="0" value="${esc(entry.cost)}" placeholder="0"></label>
               <label class="field"><span>Measurement</span><select data-action="field" data-field="unit" data-room-id="${room.id}" data-item-id="${item.id}">${unitOptions(itemUnit(project, room.id, item))}</select></label>
-              ${isSystem ? `<label class="field"><span>Year</span><input data-action="field" data-field="year" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="numeric" value="${esc(entry.year || "")}" placeholder="2015"></label>
-              <label class="field"><span>Serial</span><input data-action="field" data-field="serial" data-room-id="${room.id}" data-item-id="${item.id}" value="${esc(entry.serial || "")}" placeholder="Manual capture"></label>` : ""}
+              ${scopeFields(room, group, item, entry)}
+              ${isAsset ? `<label class="field"><span>Year</span><input data-action="field" data-field="year" data-room-id="${room.id}" data-item-id="${item.id}" type="number" inputmode="numeric" value="${esc(entry.year || "")}" placeholder="2015"></label>
+              <label class="field"><span>Serial</span><input data-action="field" data-field="serial" data-room-id="${room.id}" data-item-id="${item.id}" value="${esc(entry.serial || "")}" placeholder="Manual capture"></label>
+              <div class="serial-actions"><button class="secondary" data-action="scan-serial" data-room-id="${room.id}" data-item-id="${item.id}">Scan Serial From Photo</button>${entry.serialScanStatus ? `<div class="scan-status">${esc(entry.serialScanStatus)}</div>` : ""}</div>` : ""}
               <label class="field" style="grid-column:1/-1"><span>Notes</span><textarea data-action="field" data-field="notes" data-room-id="${room.id}" data-item-id="${item.id}" placeholder="Condition, location, measurement, quote note">${esc(entry.notes || "")}</textarea></label>
             </div>
             <div class="photo-strip">
@@ -726,7 +849,10 @@ ex-23,Garage Conversion,8850.00,ea.`;
           const total = roomRows.reduce((sum, row) => sum + row.total, 0);
           return `<section class="summary-section">
             <div class="summary-head"><span>${esc(room.name)}</span><span>${dollars(total)}</span></div>
-            ${roomRows.map((row) => `<div class="summary-row"><div><p>${esc(row.group.label)} - ${esc(row.item.name)}</p><span>${esc(row.entry.qty)} ${esc(row.unit)} at ${dollars(row.cost)}${row.entry.notes ? " - " + esc(row.entry.notes) : ""}</span></div><div class="money">${dollars(row.total)}</div></div>`).join("")}
+            ${roomRows.map((row) => {
+              const scope = scopeDetails(row);
+              return `<div class="summary-row"><div><p>${esc(row.group.label)} - ${esc(row.item.name)}</p><span>${esc(row.entry.qty)} ${esc(row.unit)} at ${dollars(row.cost)}${scope ? " - " + esc(scope) : ""}${row.entry.notes ? " - " + esc(row.entry.notes) : ""}</span></div><div class="money">${dollars(row.total)}</div></div>`;
+            }).join("")}
           </section>`;
         }).join("") : `<div class="empty">No repair items selected yet.</div>`}
         <button class="primary" style="width:100%;margin-top:4px" data-action="export">Export Estimate ZIP</button>`;
@@ -901,6 +1027,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
         closeSheet(); saveNow(); render(); return;
       }
       if (action === "add-photo") return addPhoto(btn.dataset.roomId, btn.dataset.itemId);
+      if (action === "scan-serial") return scanSerial(btn.dataset.roomId, btn.dataset.itemId);
       if (action === "remove-photo") {
         const key = entryKey(btn.dataset.roomId, btn.dataset.itemId);
         project.photos[key]?.splice(Number(btn.dataset.index), 1);
@@ -922,7 +1049,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
       render();
     });
 
-    document.body.addEventListener("input", (event) => {
+    function handleEditableField(event) {
       const input = event.target.closest("[data-action='field']");
       const dealInput = event.target.closest("[data-action='deal-field']");
       const project = currentProject();
@@ -937,7 +1064,9 @@ ex-23,Garage Conversion,8850.00,ea.`;
         scheduleSave();
         refreshNumbers();
       }
-    });
+    }
+    document.body.addEventListener("input", handleEditableField);
+    document.body.addEventListener("change", handleEditableField);
 
     async function addPhoto(roomId, itemId) {
       const input = document.createElement("input");
@@ -952,6 +1081,33 @@ ex-23,Garage Conversion,8850.00,ea.`;
         const key = entryKey(roomId, itemId);
         if (!project.photos[key]) project.photos[key] = [];
         for (const file of Array.from(input.files || [])) project.photos[key].push({ name: file.name, dataUrl: await compressImage(file) });
+        document.body.removeChild(input);
+        saveNow(); render();
+      };
+      input.click();
+    }
+    async function scanSerial(roomId, itemId) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.capture = "environment";
+      input.style.position = "fixed";
+      input.style.left = "-9999px";
+      document.body.appendChild(input);
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        const project = currentProject();
+        const key = entryKey(roomId, itemId);
+        const entry = getEntry(project, roomId, itemId);
+        if (file) {
+          if (!project.photos[key]) project.photos[key] = [];
+          project.photos[key].push({ name: file.name || "serial-photo.jpg", dataUrl: await compressImage(file) });
+          entry.serialScanStatus = "Scanning serial photo...";
+          render();
+          const result = await detectSerialFromImage(file);
+          if (result.serial) entry.serial = result.serial;
+          entry.serialScanStatus = result.message;
+        }
         document.body.removeChild(input);
         saveNow(); render();
       };
@@ -1009,8 +1165,8 @@ ex-23,Garage Conversion,8850.00,ea.`;
       }).join("")}</row>`).join("")}</sheetData></worksheet>`;
     }
     function makeXlsx(project) {
-      const estimateRows = [["Spark Homes Repair Estimate"], ["Project", project.name], ["Date", new Date().toLocaleDateString()], [], ["Room", "Group", "Item", "Unit", "Unit Cost", "Qty", "Line Total", "Notes", "Serial"]];
-      selectedRows(project).forEach((row) => estimateRows.push([row.room.name, row.group.label, row.item.name, row.unit, row.cost, Number(row.entry.qty) || 0, row.total, row.entry.notes || "", row.entry.serial || ""]));
+      const estimateRows = [["Spark Homes Repair Estimate"], ["Project", project.name], ["Date", new Date().toLocaleDateString()], [], ["Room", "Group", "Item", "Unit", "Unit Cost", "Qty", "Line Total", "Repair Level", "Scope Details", "Notes", "Serial"]];
+      selectedRows(project).forEach((row) => estimateRows.push([row.room.name, row.group.label, row.item.name, row.unit, row.cost, Number(row.entry.qty) || 0, row.total, repairLevelValue(row), scopeDetails(row, false), row.entry.notes || "", row.entry.serial || ""]));
       estimateRows.push([], ["Grand Total", "", "", "", "", "", projectTotal(project)]);
       const d = dealNumbers(project);
       const dealRows = [["Deal Guard"], ["ARV", d.arv], ["Repair Total", d.repair], ["Risk Buffer", d.risk], ["Holding / Closing", d.holdingCost], ["Target Profit", d.targetProfit], ["Max Allowable Offer", d.maxOffer], ["Offer Price", d.offer], ["Status", d.status], ["Warnings", criticalWarnings(project).join("; ")]];

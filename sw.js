@@ -1,4 +1,4 @@
-const CACHE_NAME = "spark-estimator-v7";
+const CACHE_NAME = "spark-estimator-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
