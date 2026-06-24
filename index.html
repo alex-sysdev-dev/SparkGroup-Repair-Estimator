@@ -61,6 +61,17 @@
     .room-rail::-webkit-scrollbar { display: none; }
     .pill { flex: 0 0 auto; border: 1px solid var(--line); background: white; border-radius: 8px; padding: 9px 12px; color: var(--muted); font-size: 13px; font-weight: 800; white-space: nowrap; }
     .pill.active { background: var(--spark); border-color: var(--spark); color: white; }
+    .pill.done { border-color: #111111; color: #111111; }
+    .guide { position: sticky; top: 56px; z-index: 10; background: white; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); margin-bottom: 10px; overflow: hidden; }
+    .guide-main { padding: 13px; background: #ffffff; }
+    .guide-main h1 { margin: 0; font-size: 19px; line-height: 1.15; }
+    .guide-main p { margin: 5px 0 0; color: var(--muted); font-size: 12px; font-weight: 750; }
+    .guide-meta { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); border-top: 1px solid var(--line); background: var(--paper); }
+    .guide-meta span { padding: 10px; border-right: 1px solid var(--line); font-size: 11px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .guide-meta span:last-child { border-right: 0; }
+    .guide-meta strong { display: block; margin-top: 4px; color: var(--ink); font-size: 13px; letter-spacing: 0; text-transform: none; }
+    .step-actions { display: grid; grid-template-columns: .8fr 1.2fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .step-actions button:disabled, .bottom-grid button:disabled { opacity: .42; cursor: default; }
     .panel { background: white; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,.04); overflow: hidden; margin-bottom: 10px; }
     .room-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 15px 14px; background: var(--paper); border-bottom: 1px solid var(--line); }
     .room-head h1, .room-head h2 { margin: 0; font-size: 18px; line-height: 1.15; }
@@ -141,6 +152,7 @@
     .hidden { display: none !important; }
     @media (min-width: 720px) {
       .toprow, .totals, .views { max-width: 760px; margin-left: auto; margin-right: auto; }
+      .guide { top: 59px; }
       .item-fields { grid-template-columns: repeat(4, minmax(0,1fr)); }
       .item-fields.wide { grid-template-columns: 1fr 1fr; }
     }
@@ -274,7 +286,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
 
     const STORAGE_KEY = "sparkHomesProjects_v2";
     const PRICE_KEY = "sparkHomesGlobalPrices_v2";
-    const UI = { view: "walk", roomId: null, openGroups: new Set() };
+    const UI = { view: "walk", roomId: null, activeGroupKey: null, showAllGroups: false, openGroups: new Set() };
     const app = document.getElementById("app");
     const sheet = document.getElementById("sheet");
     const sheetContent = document.getElementById("sheet-content");
@@ -458,6 +470,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
       state.projects.forEach(normalizeProjectDefaults);
       state.currentProjectId = state.projects[0].id;
       UI.roomId = state.projects[0].rooms[0]?.id || null;
+      setActiveStep(groupSteps(state.projects[0])[0]);
     }
     function saveNow() {
       const project = currentProject();
@@ -614,6 +627,54 @@ ex-23,Garage Conversion,8850.00,ea.`;
       if (project.groupReviews[groupKey(room.id, group.id)] === "noAction") return true;
       return groupItems(project, room, group).some((item) => getEntry(project, room.id, item.id).checked);
     }
+    function groupStatus(project, room, group) {
+      const key = groupKey(room.id, group.id);
+      if (project.groupReviews[key] === "noAction") return "No repair";
+      if (groupComplete(project, room, group)) return "Repair selected";
+      return "Not reviewed";
+    }
+    function roomProgress(project, room) {
+      const groups = roomCfg(room).groups;
+      const done = groups.filter((group) => groupComplete(project, room, group)).length;
+      return { done, total: groups.length };
+    }
+    function groupSteps(project = currentProject()) {
+      const steps = [];
+      project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => steps.push({ room, group, key: groupKey(room.id, group.id) })));
+      return steps;
+    }
+    function activeStep(project = currentProject()) {
+      const steps = groupSteps(project);
+      if (!steps.length) return null;
+      const byKey = steps.find((step) => step.key === UI.activeGroupKey);
+      if (byKey) return byKey;
+      const byRoom = steps.find((step) => step.room.id === UI.roomId) || steps[0];
+      setActiveStep(byRoom);
+      return byRoom;
+    }
+    function setActiveStep(step) {
+      if (!step) return;
+      UI.roomId = step.room.id;
+      UI.activeGroupKey = step.key;
+      UI.openGroups.add(step.key);
+    }
+    function stepIndex(project = currentProject(), key = UI.activeGroupKey) {
+      return groupSteps(project).findIndex((step) => step.key === key);
+    }
+    function moveStep(delta) {
+      const project = currentProject();
+      const steps = groupSteps(project);
+      const current = Math.max(0, stepIndex(project));
+      const next = Math.min(Math.max(current + delta, 0), steps.length - 1);
+      setActiveStep(steps[next]);
+    }
+    function markActiveNoAction() {
+      const project = currentProject();
+      const step = activeStep(project);
+      if (!step) return;
+      project.groupReviews[step.key] = "noAction";
+      saveNow();
+    }
     function progress(project = currentProject()) {
       let total = 0, done = 0;
       project.rooms.forEach((room) => roomCfg(room).groups.forEach((group) => {
@@ -686,42 +747,80 @@ ex-23,Garage Conversion,8850.00,ea.`;
             <button data-view="summary" class="${UI.view === "summary" ? "active" : ""}">Summary</button>
           </nav>
           <main class="main">${UI.view === "deal" ? renderDeal(project) : UI.view === "summary" ? renderSummary(project) : renderWalk(project)}</main>
-          <div class="bottom-actions">
-            <div class="bottom-grid">
-              <button class="secondary" data-action="open-add-room">Add Room</button>
-              <button class="primary" data-action="export">Export ZIP</button>
-            </div>
-          </div>
+          ${UI.view === "walk" ? renderWalkBottom(project) : `<div class="bottom-actions"><div class="bottom-grid"><button class="secondary" data-action="open-add-room">Add Room</button><button class="primary" data-action="export">Export ZIP</button></div></div>`}
         </div>`;
     }
 
     function renderWalk(project) {
-      const room = currentRoom(project);
-      if (!room) return `<div class="empty">Add a room to start the estimate.</div>`;
-      if (!UI.roomId) UI.roomId = room.id;
+      const step = activeStep(project);
+      if (!step) return `<div class="empty">Add a room to start the estimate.</div>`;
+      const room = step.room;
+      const group = step.group;
+      const steps = groupSteps(project);
+      const index = stepIndex(project, step.key);
+      const roomProg = roomProgress(project, room);
+      const prog = progress(project);
+      const status = groupStatus(project, room, group);
+      const roomTotalValue = roomTotal(project, room);
       return `
         <div class="room-rail">
-          ${project.rooms.map((r) => `<button class="pill ${r.id === room.id ? "active" : ""}" data-action="switch-room" data-room-id="${r.id}">${esc(r.name)} ${roomTotal(project, r) ? dollars(roomTotal(project, r)) : ""}</button>`).join("")}
+          ${project.rooms.map((r) => {
+            const rp = roomProgress(project, r);
+            const firstStep = groupSteps(project).find((candidate) => candidate.room.id === r.id);
+            return `<button class="pill ${r.id === room.id ? "active" : ""} ${rp.done === rp.total ? "done" : ""}" data-action="switch-room" data-room-id="${r.id}" data-step-key="${firstStep?.key || ""}">${esc(r.name)} ${rp.done}/${rp.total}</button>`;
+          }).join("")}
           <button class="pill" data-action="open-add-room">+ Add</button>
+        </div>
+        <section class="guide">
+          <div class="guide-main">
+            <p class="kicker" style="color:#666;margin-bottom:6px">Guided Walkthrough</p>
+            <h1>${esc(room.name)}: ${esc(group.label)}</h1>
+            <p>${esc(status)} - ${dollars(roomTotalValue)} in this room</p>
+          </div>
+          <div class="guide-meta">
+            <span>Group<strong>${index + 1} of ${steps.length}</strong></span>
+            <span>Room<strong>${roomProg.done} of ${roomProg.total}</strong></span>
+            <span>Total<strong>${prog.done} of ${prog.total}</strong></span>
+          </div>
+        </section>
+        <div class="step-actions">
+          <button class="secondary" data-action="prev-group" ${index <= 0 ? "disabled" : ""}>Back</button>
+          <button class="secondary" data-action="no-action" data-room-id="${room.id}" data-group-id="${group.id}">No Repair</button>
+          <button class="primary" data-action="next-group" ${index >= steps.length - 1 ? "disabled" : ""}>Next</button>
         </div>
         <section class="panel">
           <div class="room-head">
             <div>
-              <h1>${esc(room.name)}</h1>
-              <p>${esc(roomCfg(room).label)} - ${dollars(roomTotal(project, room))}</p>
+              <h2>${esc(room.name)}</h2>
+              <p>${esc(roomCfg(room).label)} - ${esc(roomProg.done)} of ${esc(roomProg.total)} groups reviewed</p>
             </div>
             <div class="small-actions">
+              <button class="mini" data-action="toggle-all-groups">${UI.showAllGroups ? "Focus" : "Show All"}</button>
               <button class="mini" data-action="rename-room" data-room-id="${room.id}">Rename</button>
               ${project.rooms.length > 1 ? `<button class="mini danger" data-action="delete-room" data-room-id="${room.id}">Remove</button>` : ""}
             </div>
           </div>
         </section>
-        ${roomCfg(room).groups.map((group) => renderGroup(project, room, group)).join("")}`;
+        ${UI.showAllGroups ? roomCfg(room).groups.map((candidate) => renderGroup(project, room, candidate, candidate.id === group.id)).join("") : renderGroup(project, room, group, true)}`;
     }
 
-    function renderGroup(project, room, group) {
+    function renderWalkBottom(project) {
+      const step = activeStep(project);
+      const steps = groupSteps(project);
+      const index = step ? stepIndex(project, step.key) : 0;
+      return `
+          <div class="bottom-actions">
+            <div class="bottom-grid" style="grid-template-columns:.85fr 1.15fr 1fr">
+              <button class="secondary" data-action="prev-group" ${index <= 0 ? "disabled" : ""}>Back</button>
+              <button class="secondary" data-action="no-action" data-room-id="${step?.room.id || ""}" data-group-id="${step?.group.id || ""}">No Repair</button>
+              <button class="primary" data-action="next-group" ${index >= steps.length - 1 ? "disabled" : ""}>Next</button>
+            </div>
+          </div>`;
+    }
+
+    function renderGroup(project, room, group, forceOpen = false) {
       const openKey = groupKey(room.id, group.id);
-      const open = UI.openGroups.has(openKey);
+      const open = forceOpen || UI.openGroups.has(openKey);
       const complete = groupComplete(project, room, group);
       const noAction = project.groupReviews[openKey] === "noAction";
       const items = groupItems(project, room, group);
@@ -952,14 +1051,24 @@ ex-23,Garage Conversion,8850.00,ea.`;
         state.projects.unshift(next);
         state.currentProjectId = next.id;
         UI.roomId = next.rooms[0].id;
+        setActiveStep(groupSteps(next)[0]);
         saveNow(); closeSheet(); render(); return;
       }
       if (action === "select-project") {
         state.currentProjectId = btn.dataset.projectId;
         UI.roomId = currentProject().rooms[0]?.id || null;
+        setActiveStep(groupSteps(currentProject())[0]);
         closeSheet(); render(); return;
       }
-      if (action === "switch-room") { UI.roomId = btn.dataset.roomId; render(); return; }
+      if (action === "switch-room") {
+        UI.roomId = btn.dataset.roomId;
+        const step = groupSteps(project).find((candidate) => candidate.key === btn.dataset.stepKey) || groupSteps(project).find((candidate) => candidate.room.id === btn.dataset.roomId);
+        setActiveStep(step);
+        render(); return;
+      }
+      if (action === "prev-group") { moveStep(-1); render(); return; }
+      if (action === "next-group") { moveStep(1); render(); return; }
+      if (action === "toggle-all-groups") { UI.showAllGroups = !UI.showAllGroups; render(); return; }
       if (action === "toggle-group") {
         const key = btn.dataset.key;
         UI.openGroups.has(key) ? UI.openGroups.delete(key) : UI.openGroups.add(key);
@@ -978,8 +1087,10 @@ ex-23,Garage Conversion,8850.00,ea.`;
       }
       if (action === "no-action") {
         const key = groupKey(btn.dataset.roomId, btn.dataset.groupId);
-        project.groupReviews[key] = project.groupReviews[key] === "noAction" ? "" : "noAction";
-        saveNow(); render(); return;
+        project.groupReviews[key] = "noAction";
+        saveNow();
+        if (UI.view === "walk") moveStep(1);
+        render(); return;
       }
       if (action === "open-add-item") return openAddItem(btn.dataset.roomId, btn.dataset.groupId);
       if (action === "add-item-confirm") {
@@ -1014,6 +1125,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
         Object.keys(project.photos).forEach((key) => { if (key.startsWith(`${roomId}::`)) delete project.photos[key]; });
         project.customItems = project.customItems.filter((item) => item.roomId !== roomId);
         UI.roomId = project.rooms[0]?.id || null;
+        setActiveStep(groupSteps(project)[0]);
         saveNow(); render(); return;
       }
       if (action === "add-room-confirm") {
@@ -1024,6 +1136,7 @@ ex-23,Garage Conversion,8850.00,ea.`;
         if (name) room.name = name;
         project.rooms.push(room);
         UI.roomId = room.id;
+        setActiveStep(groupSteps(project).find((step) => step.room.id === room.id));
         closeSheet(); saveNow(); render(); return;
       }
       if (action === "add-photo") return addPhoto(btn.dataset.roomId, btn.dataset.itemId);
